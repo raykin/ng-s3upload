@@ -56,17 +56,17 @@ angular.module('ngS3upload.services', []).
     };
 
 
-    this.upload = function (scope, uri, key, acl, type, accessKey, policy, signature, file) {
+    this.upload = function (scope, uri, options, file) {
       var deferred = $q.defer();
       scope.attempt = true;
 
       var fd = new FormData();
-      fd.append('key', key);
-      fd.append('acl', acl);
-      fd.append('Content-Type', file.type);
-      fd.append('AWSAccessKeyId', accessKey);
-      fd.append('policy', policy);
-      fd.append('signature', signature);
+      for (var key in options) {
+        if (options.hasOwnProperty(key)) {
+          fd.append(key, options[key]);
+        }
+      }
+
       fd.append("file", file);
 
       var xhr = new XMLHttpRequest();
@@ -97,10 +97,10 @@ angular.module('ngS3upload.services', []).
         scope.$apply(function () {
           self.uploads--;
           scope.uploading = false;
-          if (xhr.status === 204) { // successful upload
+          if (xhr.status === 201) { // successful upload
             scope.success = true;
             deferred.resolve(xhr);
-            scope.$emit('s3upload:success', xhr, {path: uri + key});
+            scope.$emit('s3upload:success', xhr, {path: uri + options.key});
           } else {
             scope.success = false;
             deferred.reject(xhr);
@@ -216,17 +216,12 @@ angular.module('ngS3upload.directives', []).
                 }
 
                 var s3Uri = 'https://' + bucket + '.s3.amazonaws.com/';
-                var key = opts.targetFilename ? scope.$eval(opts.targetFilename) : opts.folder + (new Date()).getTime() + '-' + S3Uploader.randomString(16) + "." + ext;
-                S3Uploader.upload(scope,
-                    s3Uri,
-                    key,
-                    opts.acl,
-                    selectedFile.type,
-                    s3Options.key,
-                    s3Options.policy,
-                    s3Options.signature,
-                    selectedFile
-                  ).then(function () {
+                s3Options['Content-Type'] = selectedFile.type;
+
+                var key = s3Options.key.replace('${filename}', selectedFile.name);
+
+                S3Uploader.upload(scope, s3Uri, s3Options, selectedFile)
+                  .then(function (res) {
                     ngModel.$setViewValue(s3Uri + key);
                     scope.filename = ngModel.$viewValue;
 

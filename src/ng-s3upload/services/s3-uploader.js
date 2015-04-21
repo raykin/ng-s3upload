@@ -24,17 +24,17 @@ angular.module('ngS3upload.services', []).
     };
 
 
-    this.upload = function (scope, uri, key, acl, type, accessKey, policy, signature, file) {
+    this.upload = function (scope, uri, options, file) {
       var deferred = $q.defer();
       scope.attempt = true;
 
       var fd = new FormData();
-      fd.append('key', key);
-      fd.append('acl', acl);
-      fd.append('Content-Type', file.type);
-      fd.append('AWSAccessKeyId', accessKey);
-      fd.append('policy', policy);
-      fd.append('signature', signature);
+      for (var key in options) {
+        if (options.hasOwnProperty(key)) {
+          fd.append(key, options[key]);
+        }
+      }
+
       fd.append("file", file);
 
       var xhr = new XMLHttpRequest();
@@ -65,10 +65,10 @@ angular.module('ngS3upload.services', []).
         scope.$apply(function () {
           self.uploads--;
           scope.uploading = false;
-          if (xhr.status === 204) { // successful upload
+          if (xhr.status === 201) { // successful upload
             scope.success = true;
             deferred.resolve(xhr);
-            scope.$emit('s3upload:success', xhr, {path: uri + key});
+            scope.$emit('s3upload:success', xhr, {path: uri + options.key});
           } else {
             scope.success = false;
             deferred.reject(xhr);
