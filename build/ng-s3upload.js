@@ -100,7 +100,7 @@ angular.module('ngS3upload.services', []).
           if (xhr.status === 201) { // successful upload
             scope.success = true;
             deferred.resolve(xhr);
-            scope.$emit('s3upload:success', xhr, {path: uri + options.key, opt: options});
+            scope.$emit('s3upload:success', xhr, {path: uri + options.key, opt: options, filename: file.name});
           } else {
             scope.success = false;
             deferred.reject(xhr);
