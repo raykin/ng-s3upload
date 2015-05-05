@@ -27,6 +27,7 @@ angular.module('ngS3upload.directives', []).
           post: function (scope, element, attrs, ngModel) {
             // Build the opts array
             var opts = angular.extend({}, scope.$eval(attrs.s3UploadOptions || attrs.options));
+            var max_size = scope.$eval(attrs.maxSize) || 10;
             opts = angular.extend({
               submitOnChange: true,
               getOptionsUri: '/getS3Options',
@@ -52,11 +53,16 @@ angular.module('ngS3upload.directives', []).
             };
 
             var uploadFile = function () {
+              scope.validationError = undefined;
               var selectedFile = file[0].files[0];
               var filename = selectedFile.name;
               var ext = filename.split('.').pop();
+              var filesize = selectedFile.size;
 
-              if(angular.isObject(opts.getManualOptions)) {
+              if (filesize / 1024 > max_size * 1024) {
+                err = 'Error: File size is more than ' + max_size + 'M';
+                scope.validationError = err;
+              } else if (angular.isObject(opts.getManualOptions)) {
                 _upload(opts.getManualOptions);
               } else {
                 S3Uploader.getUploadOptions(opts.getOptionsUri).then(function (s3Options) {
@@ -74,7 +80,7 @@ angular.module('ngS3upload.directives', []).
                 var s3Uri = 'https://' + bucket + '.s3.amazonaws.com/';
 
                 s3Options['Content-Type'] = selectedFile.type;
-                s3Options.key = s3Options.key.replace('${filename}', selectedFile.name);
+                s3Options.key = s3Options.key.replace('${filename}', filename);
 
                 S3Uploader.upload(scope, s3Uri, s3Options, selectedFile)
                   .then(function (res) {

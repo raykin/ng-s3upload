@@ -171,6 +171,7 @@ angular.module('ngS3upload.directives', []).
           post: function (scope, element, attrs, ngModel) {
             // Build the opts array
             var opts = angular.extend({}, scope.$eval(attrs.s3UploadOptions || attrs.options));
+            var max_size = scope.$eval(attrs.maxSize) || 10;
             opts = angular.extend({
               submitOnChange: true,
               getOptionsUri: '/getS3Options',
@@ -196,11 +197,16 @@ angular.module('ngS3upload.directives', []).
             };
 
             var uploadFile = function () {
+              scope.validationError = undefined;
               var selectedFile = file[0].files[0];
               var filename = selectedFile.name;
               var ext = filename.split('.').pop();
+              var filesize = selectedFile.size;
 
-              if(angular.isObject(opts.getManualOptions)) {
+              if (filesize / 1024 > max_size * 1024) {
+                err = 'Error: File size is more than ' + max_size + 'M';
+                scope.validationError = err;
+              } else if (angular.isObject(opts.getManualOptions)) {
                 _upload(opts.getManualOptions);
               } else {
                 S3Uploader.getUploadOptions(opts.getOptionsUri).then(function (s3Options) {
@@ -218,7 +224,7 @@ angular.module('ngS3upload.directives', []).
                 var s3Uri = 'https://' + bucket + '.s3.amazonaws.com/';
 
                 s3Options['Content-Type'] = selectedFile.type;
-                s3Options.key = s3Options.key.replace('${filename}', selectedFile.name);
+                s3Options.key = s3Options.key.replace('${filename}', filename);
 
                 S3Uploader.upload(scope, s3Uri, s3Options, selectedFile)
                   .then(function (res) {
@@ -280,14 +286,16 @@ angular.module('ngS3upload').run(['$templateCache', function($templateCache) {
   $templateCache.put('theme/bootstrap3.html',
     "<div class=\"upload-wrap\">\n" +
     "  <button class=\"btn btn-primary\" type=\"button\"><span ng-if=\"!filename\">Choose file</span><span ng-if=\"filename\">Replace file</span></button>\n" +
-    "  <a ng-href=\"{{ filename }}\" target=\"_blank\" class=\"\" ng-if=\"filename\" > Stored file </a>\n" +
-    "  <div class=\"progress\">\n" +
+    "  <a ng-href=\"{{ filename }}\" target=\"_blank\" class=\"\" ng-if=\"filename\"> Stored file </a>\n" +
+    "  <div class=\"progress\" style=\"margin-top: 10px\" ng-show=\"uploading\">\n" +
     "    <div class=\"progress-bar progress-bar-striped\" ng-class=\"{active: uploading}\" role=\"progressbar\" aria-valuemin=\"0\" aria-valuemax=\"100\" style=\"width: {{ progress }}%; margin-top: 10px\" ng-class=\"barClass()\">\n" +
     "      <span class=\"sr-only\">{{progress}}% Complete</span>\n" +
     "    </div>\n" +
     "  </div>\n" +
+    "  <span ng-if=\"validationError\" ng-bind=\"validationError\"> </span>\n" +
     "  <input type=\"file\" style=\"display: none\"/>\n" +
-    "</div>"
+    "\n" +
+    "</div>\n"
   );
 
 }]);
